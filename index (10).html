@@ -1,0 +1,575 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>헤드폰 대여 관리</title>
+<style>
+:root{
+  --bg:#f5f4f0;--card:#fff;--ink:#1c1c1e;--mute:#6e6e73;--line:#e2e0da;
+  --ok:#1f7a52;--okbg:#e4f3ea;--out:#1d5fd1;--outbg:#e3edfc;--mt:#c0261a;--mtbg:#fbe4e1;
+  --acc:#1c1c1e;--accbg:#d6d6db;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;padding-bottom:24px}
+.wrap{max-width:980px;margin:0 auto;padding:16px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h1{font-size:20px;margin:0}
+.sync{font-size:13px;color:var(--mute);display:flex;align-items:center;gap:8px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--mute);display:inline-block}
+.dot.on{background:var(--ok)}.dot.demo{background:#c27a0b}.dot.err{background:var(--mt)}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:7px 12px}
+button:hover{border-color:#c9c6be}
+button:disabled{opacity:.45;cursor:not-allowed}
+.primary{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+.primary:hover{background:#000}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px}
+.stat b{font-size:24px;display:block;line-height:1.2}
+.stat span{font-size:13px;color:var(--mute)}
+.stat.a b{color:var(--ok)}.stat.o b{color:var(--out)}.stat.m b{color:var(--mt)}
+.tabs{display:flex;gap:6px;background:#e9e7e1;padding:4px;border-radius:10px}
+.tabs button{flex:1;border:none;background:transparent;padding:9px;font-weight:600;color:var(--mute)}
+.tabs button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:12px}
+.quick{display:flex;flex-direction:column;gap:8px}
+.qrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.qrow input{flex:1;min-width:150px}
+.qrow input.num{flex:0 0 84px;min-width:0}
+.blk{font-weight:600}
+.sep{width:1px;align-self:stretch;background:var(--line);margin:0 2px}
+input,textarea{font:inherit;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#fff;color:var(--ink);width:100%}
+input:focus,textarea:focus{outline:2px solid var(--accbg);border-color:var(--acc)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.chips:empty{display:none}
+.chip{border-radius:999px;padding:5px 12px;font-size:13px;background:var(--outbg);border-color:#b9cff3;color:#164aa6}
+.hint{font-size:12.5px;color:var(--mute);margin-top:8px}
+.grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:12px;user-select:none;-webkit-user-select:none;touch-action:none}
+.tile{position:relative;border-radius:12px;padding:10px 6px 8px;text-align:center;border:2px solid transparent;min-height:78px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.tile .n{font-size:24px;font-weight:700;line-height:1}
+.tile .s{font-size:11.5px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tile.avail{background:var(--okbg);color:var(--ok)}
+.tile.out{background:var(--outbg);color:var(--out)}
+.tile.maint{background:var(--mtbg);color:var(--mt)}
+.tile.off{opacity:.38}
+.tile.sel{border-color:var(--acc);box-shadow:0 0 0 3px var(--accbg)}
+.tile.sel::after{content:"✓";position:absolute;top:4px;right:6px;width:18px;height:18px;border-radius:50%;background:var(--acc);color:#fff;font-size:11px;line-height:18px}
+.tile .late{position:absolute;top:4px;left:6px;font-size:10px;background:var(--mt);color:#fff;border-radius:4px;padding:0 4px}
+.legend{display:flex;gap:14px;font-size:12.5px;color:var(--mute);margin-top:10px;flex-wrap:wrap}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+.form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.form label{font-size:13px;color:var(--mute);display:flex;flex-direction:column;gap:4px}
+.form .full{grid-column:1/-1}
+.check{flex-direction:row!important;align-items:center;gap:8px!important;color:var(--ink)!important;font-size:14px!important}
+.check input{width:auto}
+.req{color:var(--mt)}
+a.sheet{font-size:13px;color:var(--acc);text-decoration:none;border:1px solid var(--line);border-radius:8px;padding:7px 12px;background:var(--card)}
+.bar{position:sticky;bottom:10px;margin-top:12px;background:rgba(255,255,255,.97);backdrop-filter:blur(6px);border:2px solid var(--acc);border-radius:12px;z-index:5;box-shadow:0 4px 16px rgba(0,0,0,.08)}
+.bar .in{padding:12px 14px;display:flex;align-items:center;gap:12px}
+.bar .info{flex:1;min-width:0}
+.bar .info b{font-size:16px}
+.bar .info div{font-size:12.5px;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar .primary{padding:12px 22px;font-size:16px;white-space:nowrap}
+h2{font-size:15px;margin:0 0 10px;display:flex;justify-content:space-between;align-items:center}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th,td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--mute);font-weight:500;font-size:12.5px}
+.badge{display:inline-block;font-size:12px;border-radius:5px;padding:1px 7px;white-space:nowrap}
+.b-out{background:var(--outbg);color:var(--out)}.b-in{background:var(--okbg);color:var(--ok)}.b-mt{background:var(--mtbg);color:var(--mt)}
+.banner{background:#fdf3e1;color:#7a4304;border-radius:10px;padding:9px 12px;font-size:13.5px;margin-top:12px}
+.toast{position:fixed;left:50%;top:16px;transform:translateX(-50%);background:#1c1c1e;color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:20;max-width:92vw;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}.toast.err{background:var(--mt)}
+dialog{border:none;border-radius:14px;padding:20px;width:min(520px,92vw)}
+dialog::backdrop{background:rgba(0,0,0,.35)}
+dialog h3{margin:0 0 8px}
+dialog p{font-size:13.5px;color:var(--mute);margin:6px 0 12px}
+.row{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
+@media(max-width:640px){
+  .grid{grid-template-columns:repeat(5,1fr);gap:6px}
+  .tile{min-height:68px}.tile .n{font-size:20px}
+  .form{grid-template-columns:1fr}
+  input,textarea{font-size:16px}
+  .logs .hide-m{display:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🎧 헤드폰 대여 관리</h1>
+    <div class="sync">
+      <span class="dot" id="dot"></span><span id="syncText">불러오는 중…</span>
+      <button id="btnRefresh" title="새로고침">↻</button>
+      <a class="sheet" id="sheetLink" target="_blank" rel="noopener" href="https://docs.google.com/spreadsheets/d/1ww554WOFYP3IzMNmZuIdk3S9uWYqv27ITKb3gIiW94M/edit">시트 열기</a>
+      <button id="btnSettings">설정</button>
+    </div>
+  </header>
+
+  <div id="demoBanner" class="banner" hidden>
+    지금은 <b>데모 모드</b>입니다. 구글시트에 기록되지 않습니다. [설정]에서 Apps Script 웹 앱 URL을 입력하세요.
+  </div>
+
+  <div class="stats">
+    <div class="stat a"><b id="cAvail">0</b><span>보관중</span></div>
+    <div class="stat o"><b id="cOut">0</b><span>대여중</span></div>
+    <div class="stat m"><b id="cMaint">0</b><span>점검</span></div>
+  </div>
+
+  <div class="tabs">
+    <button data-mode="out" class="on">대여 (체크아웃)</button>
+    <button data-mode="in">반납 (체크인)</button>
+    <button data-mode="maint">점검</button>
+  </div>
+
+  <div class="card">
+    <div class="quick">
+      <div class="qrow">
+        <button id="btnAll" class="blk">가능한 기기 전체</button>
+        <button class="blk" data-block="1-10">1–10</button>
+        <button class="blk" data-block="11-20">11–20</button>
+        <button class="blk" data-block="21-30">21–30</button>
+        <button id="btnClear">선택 해제</button>
+      </div>
+      <div class="qrow" id="countRow">
+        <input id="count" class="num" type="number" min="1" max="30" inputmode="numeric" placeholder="수량">
+        <button id="btnCount">대 자동 선택</button>
+        <span class="hint" style="margin:0">남은 기기 중 앞번호부터 채웁니다</span>
+      </div>
+      <div class="qrow">
+        <input id="range" placeholder="번호: 예) 1-25 또는 3, 7, 12" inputmode="numeric">
+        <button id="btnRange">추가</button>
+        <button id="btnExclude">빼기</button>
+      </div>
+    </div>
+    <div class="chips" id="chips"></div>
+    <div class="grid" id="grid"></div>
+    <div class="legend">
+      <span><i style="background:var(--okbg);border:1px solid var(--ok)"></i>보관중</span>
+      <span><i style="background:var(--outbg);border:1px solid var(--out)"></i>대여중</span>
+      <span><i style="background:var(--mtbg);border:1px solid var(--mt)"></i>점검</span>
+      <span>타일 위를 <b>끌면(드래그)</b> 여러 대가 한 번에 선택/해제됩니다</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="form" id="formOut">
+      <label>대여자 이름 <span class="req">*</span><input id="borrower" placeholder="홍길동"></label>
+      <label>소속 / 용도<input id="group" placeholder="예) 3학년 2반 듣기평가"></label>
+      <label>반납 예정일<input id="due" type="date"></label>
+      <label>처리자<input class="operator" placeholder="담당자 이름"></label>
+      <label class="full">메모<input id="memoOut" placeholder="선택 사항"></label>
+    </div>
+    <div class="form" id="formIn" hidden>
+      <label class="full check"><input type="checkbox" id="needsCheck"> 선택한 기기를 '점검 필요'로 반납 (파손·분실 부품 등)</label>
+      <label>처리자<input class="operator" placeholder="담당자 이름"></label>
+      <label>메모<input id="memoIn" placeholder="예) 7번 이어패드 찢어짐"></label>
+    </div>
+    <div class="form" id="formMaint" hidden>
+      <label>처리자<input class="operator" placeholder="담당자 이름"></label>
+      <label>메모<input id="memoMaint" placeholder="점검 사유 / 조치 내용"></label>
+      <div class="full hint">보관중인 기기를 선택하면 '점검 전환', 점검중인 기기를 선택하면 '점검 해제'가 됩니다.</div>
+    </div>
+  </div>
+
+<div class="bar"><div class="in">
+    <div class="info"><b id="selCount">0대 선택</b><div id="selList">기기를 눌러 선택하세요</div></div>
+    <button class="primary" id="btnSubmit" disabled>대여 처리</button>
+  </div></div>
+
+  <div class="card logs">
+    <h2>최근 기록 <span class="hint" style="margin:0">전체 기록은 구글시트 '기록' 탭</span></h2>
+    <table>
+      <thead><tr><th>시각</th><th>구분</th><th>번호</th><th>대여자</th><th class="hide-m">처리자</th></tr></thead>
+      <tbody id="logBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<dialog id="cdlg">
+  <h3 id="cTitle"></h3>
+  <p id="cBody" style="white-space:pre-wrap;color:var(--ink);font-size:15px"></p>
+  <div class="row">
+    <button id="cNo">취소</button>
+    <button class="primary" id="cYes">처리</button>
+  </div>
+</dialog>
+
+<dialog id="dlg">
+  <h3>구글시트 연결</h3>
+  <p>Apps Script를 웹 앱으로 배포한 뒤 받은 URL(…/exec)을 붙여넣으세요. 이 브라우저에 저장됩니다.</p>
+  <input id="urlInput" placeholder="https://script.google.com/macros/s/…/exec">
+  <div class="row">
+    <button id="btnDemo">연결 해제 (데모 모드)</button>
+    <button id="btnCancel">취소</button>
+    <button class="primary" id="btnSave">저장 후 연결</button>
+  </div>
+</dialog>
+
+<script>
+const N = 30;
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const store = {
+  get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
+  set(k,v){ try{ v==null ? localStorage.removeItem(k) : localStorage.setItem(k,v); }catch(e){} }
+};
+
+// Apps Script 웹 앱 URL을 여기에 넣어두면 모든 PC에서 설정 없이 바로 연결됩니다.
+const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbzrz650FgaGdUvbyw_z8hfaojrfStTLCsEM9XYIo-uJb-wReDgqGrkwcgqlppxFpEnZ/exec';
+let API = store.get('hp_api_url_v2') || DEFAULT_API_URL;
+let devices = [], logs = [], mode = 'out', sel = new Set(), busy = false, lastClicked = null;
+
+/* ---------- 데모 백엔드 (URL 미설정 시) ---------- */
+let demoDev = Array.from({length:N}, (_,i) => ({id:i+1,status:'보관중',borrower:'',group:'',outAt:'',due:'',memo:''}));
+let demoLog = [];
+function nowStr(){
+  const d = new Date(), p = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+function demoCall(b){
+  const res = () => JSON.parse(JSON.stringify({ok:true, devices:demoDev, logs:demoLog.slice(0,50)}));
+  if (!b) return res();
+  const d = demoDev, t = nowStr(), ids = [...new Set(b.ids)].sort((a,c)=>a-c), op = b.operator||'', memo = b.memo||'';
+  const need = (st, msg) => { const bad = ids.filter(i => d[i-1].status !== st); if (bad.length) throw new Error(msg + bad.join(', ') + '번'); };
+  const L = [];
+  if (b.action === 'checkout'){
+    if (!b.borrower) throw new Error('대여자 이름을 입력하세요.');
+    need('보관중', '대여할 수 없는 기기가 있습니다: ');
+    ids.forEach(i => Object.assign(d[i-1], {status:'대여중',borrower:b.borrower,group:b.group,outAt:t,due:b.due,memo}));
+    L.push({time:t,type:'대여',ids:ids.join(', '),count:ids.length,borrower:b.borrower,group:b.group,operator:op,memo});
+  } else if (b.action === 'checkin'){
+    need('대여중', '대여중이 아닌 기기가 있습니다: ');
+    const g = {};
+    ids.forEach(i => { const x = d[i-1], k = x.borrower+'|'+x.group;
+      (g[k] = g[k] || {borrower:x.borrower,group:x.group,ids:[]}).ids.push(i);
+      Object.assign(x, {status:b.needsCheck?'점검':'보관중',borrower:'',group:'',outAt:'',due:'',memo:b.needsCheck?memo:''}); });
+    Object.values(g).forEach(x => L.push({time:t,type:b.needsCheck?'반납(점검필요)':'반납',ids:x.ids.join(', '),count:x.ids.length,borrower:x.borrower,group:x.group,operator:op,memo}));
+  } else if (b.action === 'maint_on'){
+    need('보관중', '보관중인 기기만 점검 전환 가능: ');
+    ids.forEach(i => Object.assign(d[i-1], {status:'점검',memo}));
+    L.push({time:t,type:'점검 전환',ids:ids.join(', '),count:ids.length,borrower:'',group:'',operator:op,memo});
+  } else if (b.action === 'maint_off'){
+    need('점검', '점검중인 기기가 아닙니다: ');
+    ids.forEach(i => Object.assign(d[i-1], {status:'보관중',memo:''}));
+    L.push({time:t,type:'점검 해제',ids:ids.join(', '),count:ids.length,borrower:'',group:'',operator:op,memo});
+  }
+  demoLog = L.concat(demoLog);
+  return res();
+}
+
+/* ---------- API ---------- */
+// Apps Script 화면 안에서 열렸으면 google.script.run 으로 직접 호출 (URL 불필요)
+const GAS = typeof google !== 'undefined' && google.script && google.script.run;
+const online = () => !!(GAS || API);
+async function call(body){
+  if (GAS) return new Promise((res, rej) => {
+    google.script.run
+      .withSuccessHandler(j => (j && j.ok) ? res(j) : rej(new Error((j && j.error) || '처리 중 오류가 발생했습니다.')))
+      .withFailureHandler(e => rej(new Error((e && e.message) || String(e))))
+      .api(body || null);
+  });
+  if (!API) return demoCall(body);
+  let r;
+  if (body){
+    r = await fetch(API, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify(body)});
+  } else {
+    r = await fetch(API + (API.includes('?') ? '&' : '?') + 'action=status&t=' + Date.now());
+  }
+  if (!r.ok) throw new Error('서버 응답 오류 (' + r.status + ')');
+  const j = await r.json();
+  if (!j.ok) throw new Error(j.error || '처리 중 오류가 발생했습니다.');
+  return j;
+}
+
+function setSync(state, text){
+  $('#dot').className = 'dot ' + state;
+  $('#syncText').textContent = text;
+}
+function hhmm(){ const d=new Date(); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); }
+
+async function refresh(silent){
+  if (busy) return;
+  try{
+    if (!silent) setSync('', '불러오는 중…');
+    apply(await call(null));
+  }catch(e){
+    setSync('err', '연결 실패');
+    if (!silent) toast('구글시트에서 불러오지 못했습니다: ' + e.message, true);
+  }
+}
+function apply(j){
+  devices = j.devices; logs = j.logs || [];
+  for (const id of [...sel]) if (!selectable(devices[id-1])) sel.delete(id);
+  online() ? setSync('on', '구글시트 연결됨 · ' + hhmm() + ' 동기화') : setSync('demo', '데모 모드');
+  $('#demoBanner').hidden = online();
+  render();
+}
+
+/* ---------- 선택 로직 ---------- */
+function selectable(d){
+  if (!d) return false;
+  if (mode === 'out') return d.status === '보관중';
+  if (mode === 'in') return d.status === '대여중';
+  return d.status === '보관중' || d.status === '점검';
+}
+function parseRange(str){
+  const out = [];
+  str.split(/[,\s]+/).filter(Boolean).forEach(p => {
+    const m = p.match(/^(\d+)(?:[-~](\d+))?$/);
+    if (!m) return;
+    let a = +m[1], b = m[2] ? +m[2] : a;
+    if (a > b) [a,b] = [b,a];
+    for (let i = a; i <= b; i++) if (i >= 1 && i <= N) out.push(i);
+  });
+  return out;
+}
+function today(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ---------- 렌더 ---------- */
+function render(){
+  const cnt = {보관중:0, 대여중:0, 점검:0};
+  devices.forEach(d => cnt[d.status] = (cnt[d.status]||0) + 1);
+  $('#cAvail').textContent = cnt['보관중']; $('#cOut').textContent = cnt['대여중']; $('#cMaint').textContent = cnt['점검'];
+
+  const t = today();
+  $('#grid').innerHTML = devices.map(d => {
+    const cls = d.status === '대여중' ? 'out' : d.status === '점검' ? 'maint' : 'avail';
+    const sub = d.status === '대여중' ? (d.borrower || '대여중') : d.status;
+    const late = d.status === '대여중' && d.due && d.due < t ? '<span class="late">연체</span>' : '';
+    const title = d.status === '대여중' ? `${d.id}번 · ${d.borrower} ${d.group ? '('+d.group+')' : ''}\n대여: ${d.outAt}${d.due ? '\n반납예정: '+d.due : ''}` :
+                  `${d.id}번 · ${d.status}${d.memo ? '\n'+d.memo : ''}`;
+    return `<button class="tile ${cls} ${selectable(d)?'':'off'} ${sel.has(d.id)?'sel':''}" data-id="${d.id}" title="${esc(title)}">
+      ${late}<span class="n">${d.id}</span><span class="s">${esc(sub)}</span></button>`;
+  }).join('');
+
+  // 반납 모드: 대여자별 묶음 선택
+  if (mode === 'in'){
+    const g = {};
+    devices.filter(d => d.status === '대여중').forEach(d => {
+      const k = d.borrower + '|' + d.group;
+      (g[k] = g[k] || {borrower:d.borrower, group:d.group, ids:[]}).ids.push(d.id);
+    });
+    $('#chips').innerHTML = Object.values(g).map(x =>
+      `<button class="chip" data-ids="${x.ids.join(',')}">${esc(x.borrower)}${x.group ? ' · '+esc(x.group) : ''} (${x.ids.length}대) 전체 선택</button>`).join('');
+  } else $('#chips').innerHTML = '';
+
+  $('#btnAll').textContent = mode === 'out' ? '보관중 전체' : mode === 'in' ? '대여중 전체' : '보관중 전체';
+  $('#countRow').hidden = mode !== 'out';
+  $('#formOut').hidden = mode !== 'out';
+  $('#formIn').hidden = mode !== 'in';
+  $('#formMaint').hidden = mode !== 'maint';
+
+  renderBar();
+  renderLogs();
+}
+function maintAction(){
+  const st = [...sel].map(i => devices[i-1].status);
+  if (!st.length) return null;
+  if (st.every(s => s === '보관중')) return 'maint_on';
+  if (st.every(s => s === '점검')) return 'maint_off';
+  return 'mixed';
+}
+function renderBar(){
+  const ids = [...sel].sort((a,b)=>a-b);
+  $('#selCount').textContent = ids.length + '대 선택';
+  $('#selList').textContent = ids.length ? ids.join(', ') + '번' : '기기를 눌러 선택하세요';
+  let label = mode === 'out' ? '대여 처리' : mode === 'in' ? '반납 처리' : '점검 처리';
+  let ok = ids.length > 0;
+  if (mode === 'maint'){
+    const a = maintAction();
+    if (a === 'maint_on') label = '점검 전환';
+    else if (a === 'maint_off') label = '점검 해제';
+    else if (a === 'mixed'){ label = '상태를 한 종류로 선택'; ok = false; }
+  }
+  if (busy) label = '처리 중…';
+  const btn = $('#btnSubmit');
+  btn.textContent = ids.length && !busy && ok ? `${ids.length}대 ${label}` : label;
+  btn.disabled = !ok || busy;
+}
+function renderLogs(){
+  const cls = t => t.startsWith('대여') ? 'b-out' : t.startsWith('반납') && !t.includes('점검') ? 'b-in' : 'b-mt';
+  $('#logBody').innerHTML = logs.length ? logs.slice(0,30).map(l => `<tr>
+      <td style="white-space:nowrap">${esc(String(l.time).slice(5,16))}</td>
+      <td><span class="badge ${cls(l.type)}">${esc(l.type)}</span></td>
+      <td>${esc(l.ids)} <span class="hint">(${esc(l.count)}대)</span></td>
+      <td>${esc(l.borrower)}${l.group ? '<div class="hint" style="margin:0">'+esc(l.group)+'</div>' : ''}${l.memo ? '<div class="hint" style="margin:0">📝 '+esc(l.memo)+'</div>' : ''}</td>
+      <td class="hide-m">${esc(l.operator)}</td></tr>`).join('')
+    : '<tr><td colspan="5" class="hint">아직 기록이 없습니다.</td></tr>';
+}
+
+/* ---------- 이벤트 ---------- */
+// 드래그로 여러 대 선택/해제 (마우스·터치 공통)
+let drag = null; // {add:boolean, moved:boolean}
+function tileAt(x, y){ const el = document.elementFromPoint(x, y); return el && el.closest('#grid .tile'); }
+function paint(id){
+  if (!selectable(devices[id-1])) return;
+  drag.add ? sel.add(id) : sel.delete(id);
+  const t = $(`#grid .tile[data-id="${id}"]`); if (t) t.classList.toggle('sel', drag.add);
+  renderBar();
+}
+$('#grid').addEventListener('pointerdown', e => {
+  const t = e.target.closest('.tile'); if (!t) return;
+  e.preventDefault();
+  const id = +t.dataset.id;
+  if (!selectable(devices[id-1])){
+    toast(`${id}번은 현재 '${devices[id-1].status}' 상태라 이 탭에서 선택할 수 없습니다.`, true); return;
+  }
+  if (e.shiftKey && lastClicked){
+    const [a,b] = [Math.min(lastClicked,id), Math.max(lastClicked,id)];
+    for (let i = a; i <= b; i++) if (selectable(devices[i-1])) sel.add(i);
+    lastClicked = id; render(); return;
+  }
+  drag = {add: !sel.has(id), last: id};
+  paint(id);
+  lastClicked = id;
+});
+window.addEventListener('pointermove', e => {
+  if (!drag) return;
+  const t = tileAt(e.clientX, e.clientY); if (!t) return;
+  const id = +t.dataset.id;
+  if (id !== drag.last){ drag.last = id; paint(id); }
+});
+['pointerup','pointercancel'].forEach(ev => window.addEventListener(ev, () => { if (drag){ drag = null; render(); } }));
+$('#chips').addEventListener('click', e => {
+  const c = e.target.closest('.chip'); if (!c) return;
+  c.dataset.ids.split(',').map(Number).forEach(i => sel.add(i));
+  render();
+});
+function addNums(nums){
+  const skipped = [];
+  nums.forEach(i => selectable(devices[i-1]) ? sel.add(i) : skipped.push(i));
+  render();
+  if (skipped.length) toast(`선택 불가로 건너뜀: ${skipped.join(', ')}번`, true);
+}
+function addRange(){
+  const nums = parseRange($('#range').value);
+  if (!nums.length){ toast('예) 1-25 또는 3, 7, 12 처럼 입력하세요', true); return; }
+  $('#range').value = '';
+  addNums(nums);
+}
+$('#btnRange').onclick = addRange;
+$('#btnExclude').onclick = () => {
+  const nums = parseRange($('#range').value);
+  if (!nums.length){ toast('뺄 번호를 입력하세요. 예) 3, 7', true); return; }
+  nums.forEach(i => sel.delete(i));
+  $('#range').value = '';
+  render();
+};
+$$('[data-block]').forEach(b => b.onclick = () => {
+  const nums = parseRange(b.dataset.block).filter(i => selectable(devices[i-1]) && (mode !== 'maint' || devices[i-1].status === '보관중'));
+  nums.forEach(i => sel.add(i)); render();
+  if (!nums.length) toast('이 구간에는 선택할 수 있는 기기가 없습니다', true);
+});
+function pickCount(){
+  const n = parseInt($('#count').value, 10);
+  if (!n || n < 1){ toast('몇 대를 대여할지 숫자로 입력하세요', true); return; }
+  const avail = devices.filter(d => d.status === '보관중').map(d => d.id);
+  if (n > avail.length){ toast(`보관중인 기기가 ${avail.length}대뿐입니다`, true); return; }
+  sel.clear(); avail.slice(0, n).forEach(i => sel.add(i));
+  $('#count').value = '';
+  render();
+  toast(`${n}대 선택됨 — 대여자 이름만 입력하면 됩니다`);
+  $('#borrower').focus();
+}
+$('#btnCount').onclick = pickCount;
+$('#count').addEventListener('keydown', e => { if (e.key === 'Enter') pickCount(); });
+$('#range').addEventListener('keydown', e => { if (e.key === 'Enter') addRange(); });
+$('#btnAll').onclick = () => {
+  devices.forEach(d => { if (selectable(d) && (mode !== 'maint' || d.status === '보관중')) sel.add(d.id); });
+  render();
+};
+$('#btnClear').onclick = () => { sel.clear(); render(); };
+$$('.tabs button').forEach(b => b.onclick = () => {
+  mode = b.dataset.mode; sel.clear(); lastClicked = null;
+  $$('.tabs button').forEach(x => x.classList.toggle('on', x === b));
+  render();
+});
+
+// 처리자 이름은 기억
+$$('.operator').forEach(inp => {
+  inp.value = store.get('hp_operator') || '';
+  inp.addEventListener('input', () => { store.set('hp_operator', inp.value); $$('.operator').forEach(o => { if (o !== inp) o.value = inp.value; }); });
+});
+
+$('#btnSubmit').onclick = async () => {
+  const ids = [...sel].sort((a,b)=>a-b);
+  if (!ids.length || busy) return;
+  const operator = $('.operator').value.trim();
+  let body, label;
+  if (mode === 'out'){
+    const borrower = $('#borrower').value.trim();
+    if (!borrower){ toast('대여자 이름을 입력하세요', true); $('#borrower').focus(); return; }
+    body = {action:'checkout', ids, borrower, group:$('#group').value.trim(), due:$('#due').value, memo:$('#memoOut').value.trim(), operator};
+    label = `${borrower}님께 대여`;
+  } else if (mode === 'in'){
+    const needsCheck = $('#needsCheck').checked;
+    body = {action:'checkin', ids, needsCheck, memo:$('#memoIn').value.trim(), operator};
+    label = needsCheck ? '반납 (점검 필요)' : '반납';
+  } else {
+    const a = maintAction();
+    body = {action:a, ids, memo:$('#memoMaint').value.trim(), operator};
+    label = a === 'maint_on' ? '점검 전환' : '점검 해제';
+  }
+  if (!(await ask(`${ids.length}대 ${label}`, `번호: ${ids.join(', ')}\n\n처리할까요?`))) return;
+
+  busy = true; renderBar();
+  try{
+    const j = await call(body);
+    sel.clear(); lastClicked = null;
+    ['#borrower','#group','#due','#memoOut','#memoIn','#memoMaint'].forEach(s => $(s).value = '');
+    $('#needsCheck').checked = false;
+    busy = false;
+    apply(j);
+    toast(`✓ ${ids.length}대 ${label} 완료`);
+  }catch(e){
+    busy = false;
+    toast(e.message, true);
+    refresh(true);
+  }
+  renderBar();
+};
+
+/* ---------- 설정 ---------- */
+$('#btnSettings').onclick = () => { $('#urlInput').value = API; $('#dlg').showModal(); };
+$('#btnCancel').onclick = () => $('#dlg').close();
+$('#btnSave').onclick = () => {
+  const v = $('#urlInput').value.trim();
+  if (v && !/^https:\/\/script\.google(usercontent)?\.com\//.test(v)){ toast('Apps Script 웹 앱 URL이 아닌 것 같습니다', true); return; }
+  API = v; store.set('hp_api_url_v2', v || null);
+  $('#dlg').close(); sel.clear(); refresh();
+};
+$('#btnDemo').onclick = () => { API = ''; store.set('hp_api_url_v2', null); $('#dlg').close(); sel.clear(); refresh(); };
+$('#btnRefresh').onclick = () => refresh();
+
+function ask(title, body){
+  return new Promise(res => {
+    const d = $('#cdlg');
+    $('#cTitle').textContent = title; $('#cBody').textContent = body;
+    const done = v => { d.close(); res(v); };
+    $('#cYes').onclick = () => done(true);
+    $('#cNo').onclick = () => done(false);
+    d.oncancel = e => { e.preventDefault(); done(false); };
+    d.showModal();
+  });
+}
+
+let toastTimer;
+function toast(msg, err){
+  const t = $('#toast');
+  t.textContent = msg; t.className = 'toast show' + (err ? ' err' : '');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.className = 'toast', err ? 3800 : 2400);
+}
+
+// 30초마다 자동 동기화 (다른 사람이 처리한 내용 반영)
+setInterval(() => { if (document.visibilityState === 'visible' && online()) refresh(true); }, 30000);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && online()) refresh(true); });
+if (GAS) $('#btnSettings').hidden = true;
+
+refresh();
+</script>
+</body>
+</html>
